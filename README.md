@@ -1,5 +1,5 @@
 # rl_quadcopter
-Reinforcement Learning Coursework for Udacity Machine Learning Engineer Nanodegree
+Teach a Quadcopter How to Fly - Reinforcement Learning Coursework for Udacity Machine Learning Engineer Nanodegree
 
 
 ## Deep RL Quadcopter Controller
