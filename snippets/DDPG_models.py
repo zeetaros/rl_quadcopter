@@ -4,7 +4,7 @@ from keras import backend as K
 class Actor:
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, action_low, action_high):
+    def __init__(self, state_size, action_size, action_low, action_high, layer_type=None):
         """Initialize parameters and build model.
 
         Params
@@ -13,12 +13,15 @@ class Actor:
             action_size (int): Dimension of each action
             action_low (array): Min value of each action dimension
             action_high (array): Max value of each action dimension
+            layer_type (string): Type of DL layer to use, take value "Dense" for fully-connected layers
+                                 or "Conv" for convolutional layers
         """
         self.state_size = state_size
         self.action_size = action_size
         self.action_low = action_low
         self.action_high = action_high
         self.action_range = self.action_high - self.action_low
+        self.layer_type = layer_type or "Conv"
 
         # Initialize any other variables here
 
@@ -26,15 +29,29 @@ class Actor:
 
     def build_model(self):
         """Build an actor (policy) network that maps states -> actions."""
-        # Define input layer (states)
-        states = layers.Input(shape=(self.state_size,), name='states')
 
-        # Add hidden layers
-        net = layers.Dense(units=32, activation='relu')(states)
-        net = layers.Dense(units=64, activation='relu')(net)
-        net = layers.Dense(units=32, activation='relu')(net)
+        
+        if self.layer_type == "Dense":
+            # Define input layer (states)
+            states = layers.Input(shape=(self.state_size,), name='states')
+            # Add hidden layers
+            net = layers.Dense(units=32, activation='relu')(states)
+            net = layers.Dense(units=64, activation='relu')(net)
+            net = layers.Dense(units=32, activation='relu')(net)
 
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
+        elif self.layer_type == "Conv":
+            # Define input layer (states)
+            states = layers.Input(shape=(self.state_size, self.state_size, self.state_size, ), name='states')
+
+            net = layers.Conv2D(filters=32, kernel_size=2, padding='same', activation='relu')(states)
+            net = layers.MaxPooling2D(pool_size=2)(net)
+            net = layers.Conv2D(filters=64, kernel_size=2, padding='same', activation='relu')(net)
+            net = layers.MaxPooling2D(pool_size=2)(net)
+            # net = layers.GlobalAveragePooling1D()(net)
+
+        else:
+            raise ValueError("Specify layer_type with either 'Dense' or 'Conv'")
 
         # Add final output layer with sigmoid activation
         raw_actions = layers.Dense(units=self.action_size, activation='sigmoid',
@@ -65,16 +82,19 @@ class Actor:
 class Critic:
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, layer_type=None):
         """Initialize parameters and build model.
 
         Params
         ======
             state_size (int): Dimension of each state
             action_size (int): Dimension of each action
+            layer_type (string): Type of DL layer to use, take value "Dense" for fully-connected layers
+                                 or "Conv" for convolutional layers
         """
         self.state_size = state_size
         self.action_size = action_size
+        self.layer_type = layer_type or "Conv" 
 
         # Initialize any other variables here
 

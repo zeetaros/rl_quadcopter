@@ -43,6 +43,9 @@ class Task():
         self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.]) 
         # by default the target is going back to where it starts
 
+        # self.best_coord = {'position': init_pose, 'reward': self.get_reward()}
+        self.coords_log = []
+
     def get_reward(self):
         """Uses current pose of sim to return reward."""
         reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
@@ -71,5 +74,19 @@ class Task():
             The agent should call this method every time the episode ends.
         """
         self.sim.reset()
+        # self.coords_log = []
         state = np.concatenate([self.sim.pose] * self.action_repeat) 
         return state
+
+    @property
+    def current_coord(self):
+        return {'position': self.sim.pose[:3],
+                'reward': self.get_reward()}
+
+    @property
+    def best_coord(self):
+        if self.coords_log != []:
+            return max(self.coords_log, key=lambda c:c['reward'])
+
+    def save_coord(self):
+        self.coords_log.append(self.current_coord)
