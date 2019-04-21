@@ -2,6 +2,11 @@ import numpy as np
 from task import Task
 
 class PolicySearch_Agent():
+    """
+        Uses a very simplistic linear policy to directly compute the action vector as a dot product of 
+        the state vector and a matrix of weights. Then, it randomly perturbs the parameters by adding 
+        some Gaussian noise, to produce a different policy.
+    """
     def __init__(self, task):
         # Task (environment) information
         self.task = task
@@ -55,3 +60,5 @@ class PolicySearch_Agent():
             self.noise_scale = min(2.0 * self.noise_scale, 3.2)
         self.w = self.w + self.noise_scale * np.random.normal(size=self.w.shape)  # equal noise in all directions
         
+        # Write current coordinates to log
+        self.task.save_coord()
