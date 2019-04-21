@@ -43,12 +43,26 @@ class Task():
         self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.]) 
         # by default the target is going back to where it starts
 
-        # self.best_coord = {'position': init_pose, 'reward': self.get_reward()}
         self.coords_log = []
+        self.speed_log = []
+        self.init_pose = init_pose
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
-        reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
+        # reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
+
+        ## Assign extra penalty if the quadcopter cannot keep stable in the air
+        ## The more it diverses from the current height the more penalty it gets
+        if len(self.coords_log) > 2:
+            stability = abs(self.sim.pose[2] - self.coords_log[-2]['position'][2])
+        else:
+            stability = 0
+
+        distance = abs(self.sim.pose[:2] - self.target_pos[:2]).sum()
+
+        velocity_discount = min(self.sim.linear_accel[:2].sum(), 10) #** (1 / max(distance, 1))
+
+        reward = 1. - .6 * distance - .4 * stability - velocity_discount
         return reward
 
     def step(self, rotor_speeds):
@@ -90,3 +104,6 @@ class Task():
 
     def save_coord(self):
         self.coords_log.append(self.current_coord)
+
+    def save_speed(self):
+        self.speed_log.append(self.sim.linear_accel)

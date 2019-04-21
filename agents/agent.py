@@ -122,6 +122,7 @@ class AgentOculus():
 
         ## Write current coordinates to log
         self.task.save_coord()
+        self.task.save_speed()
 
     def soft_update(self, local_model, target_model):
         """Soft update model parameters."""
