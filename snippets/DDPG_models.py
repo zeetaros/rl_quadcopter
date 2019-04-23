@@ -98,7 +98,7 @@ class Critic:
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.layer_type = layer_type or "Conv" 
+        self.layer_type = layer_type or "Dense" 
 
         # Initialize any other variables here
 
@@ -118,13 +118,17 @@ class Critic:
         actions = layers.Input(shape=(self.action_size,), name='actions')
 
         # Add hidden layer(s) for state pathway
-        net_states = layers.Dense(units=32, activation='relu')(states)
-        net_states = layers.Dense(units=64, activation='relu')(net_states)
+        net_states = layers.Dense(units=32, activation='relu', kernel_regularizer=l2(0.01), activity_regularizer=l1(0.01))(states)
+        net_states = layers.Dropout(0.05)(net_states)
+        net_states = layers.Dense(units=64, activation='relu', kernel_regularizer=l2(0.01), activity_regularizer=l1(0.01))(net_states)
+        net_states = layers.Dropout(0.02)(net_states)
 
         # Add hidden layer(s) for action pathway
-        net_actions = layers.Dense(units=32, activation='relu')(actions)
-        net_actions = layers.Dense(units=64, activation='relu')(net_actions)
-
+        net_actions = layers.Dense(units=32, activation='relu', kernel_regularizer=l2(0.01), activity_regularizer=l1(0.01))(actions)
+        net_actions = layers.Dropout(0.05)(net_actions)
+        net_actions = layers.Dense(units=64, activation='relu', kernel_regularizer=l2(0.01), activity_regularizer=l1(0.01))(net_actions)
+        net_actions = layers.Dropout(0.05)(net_actions)
+        
         # Try different layer sizes, activations, add batch normalization, regularizers, etc.
 
         # Combine state and action pathways
