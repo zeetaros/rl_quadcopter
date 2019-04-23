@@ -32,7 +32,12 @@ class ReplayBuffer:
 
 
 class OUNoise:
-    """Ornstein-Uhlenbeck process."""
+    """
+        Ornstein-Uhlenbeck process.
+        - mu: the mean, which controls exploration as learning progresses
+        - theta: the speed of the mean reversion
+        - sigma: the volatility
+    """
 
     def __init__(self, size, mu, theta, sigma):
         """Initialize parameters and noise process."""
