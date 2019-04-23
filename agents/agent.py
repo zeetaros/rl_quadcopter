@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from task import Task
 from snippets.DDPG_agent import DDPG
 from snippets.DDPG_models import Actor, Critic
@@ -32,7 +33,7 @@ class AgentOculus():
 
         # Replay memory
         self.buffer_size = 100000
-        self.batch_size = 64
+        self.batch_size = 64  # original 64
         self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
         # Noise process
@@ -42,8 +43,8 @@ class AgentOculus():
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Algorithm parameters
-        self.gamma = 0.99  # discount factor
-        self.tau = 0.01  # for soft update of target parameters
+        self.gamma = 0.59  # discount factor, original 0.99
+        self.tau = 0.005  # for soft update of target parameters, original 0.01
  
         # Score tracker and learning parameters
         self.score = 0
@@ -121,8 +122,8 @@ class AgentOculus():
         self.w = self.w + self.noise_scale * np.random.normal(size=self.w.shape)  # equal noise in all directions
 
         ## Write current coordinates to log
-        self.task.save_coord()
-        self.task.save_speed()
+        # self.task.save_coord()
+        # self.task.save_speed()
 
     def soft_update(self, local_model, target_model):
         """Soft update model parameters."""

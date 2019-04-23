@@ -13,7 +13,7 @@ class Task():
         To set the size of the state (state_size), we must take action repeats into account.
     """
     def __init__(self, init_pose=None, init_velocities=None, 
-        init_angle_velocities=None, runtime=5., target_pos=None):
+        init_angle_velocities=None, runtime=5., target_pos=None, orig_reward_func=False):
         """Initialize a Task object.
         Params
         ======
@@ -45,24 +45,33 @@ class Task():
 
         self.coords_log = []
         self.speed_log = []
-        self.init_pose = init_pose
+        self.init_pose = init_pose or np.array([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])
+        self.orig_reward_func = orig_reward_func
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
-        # reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
-
-        ## Assign extra penalty if the quadcopter cannot keep stable in the air
-        ## The more it diverses from the current height the more penalty it gets
-        if len(self.coords_log) > 2:
-            stability = abs(self.sim.pose[2] - self.coords_log[-2]['position'][2])
+        if self.orig_reward_func:
+            reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
         else:
-            stability = 0
+            ## Assign extra penalty if the quadcopter cannot keep stable in the air
+            ## The more it diverses from the current height the more penalty it gets
+            if len(self.coords_log) > 1:
+                # Difference between current and last position
+                stability = abs(self.sim.pose[2] - self.coords_log[-1]['position'][2])
+                
+                # Further it is away from the target height larger the tolerance for unstability
+                off_target_height_discount = np.exp(-abs(self.sim.pose[2] - self.target_pos[2]))
+                stable_penalty = stability ** off_target_height_discount
+            else:
+                # because assume it start from infinitely far away from the target, off_target_height_discount will be close to ZERO
+                stable_penalty = 1
 
-        distance = abs(self.sim.pose[:2] - self.target_pos[:2]).sum()
+            # Normalise the distance by dividing the current distance from the goal by the initial distance from the goal
+            distance_penalty = abs(self.sim.pose[:3] - self.target_pos[:3]).sum() / abs(self.init_pose[:3] - self.target_pos[:3]).sum()
 
-        velocity_discount = min(self.sim.linear_accel[:2].sum(), 10) #** (1 / max(distance, 1))
+            velocity_penalty = min(self.sim.linear_accel[:2].sum(), 10) 
 
-        reward = 1. - .6 * distance - .4 * stability - velocity_discount
+            reward = 1. - distance_penalty - .6 * stable_penalty - .5 * velocity_penalty
         return reward
 
     def step(self, rotor_speeds):
@@ -88,7 +97,6 @@ class Task():
             The agent should call this method every time the episode ends.
         """
         self.sim.reset()
-        # self.coords_log = []
         state = np.concatenate([self.sim.pose] * self.action_repeat) 
         return state
 
@@ -102,8 +110,8 @@ class Task():
         if self.coords_log != []:
             return max(self.coords_log, key=lambda c:c['reward'])
 
-    def save_coord(self):
-        self.coords_log.append(self.current_coord)
+    def save_coord(self, i_episode=None):
+        self.coords_log.append({'episode': i_episode, 'position': self.sim.pose[:3], 'reward': self.get_reward()})
 
-    def save_speed(self):
-        self.speed_log.append(self.sim.linear_accel)
+    def save_speed(self, i_episode=None):
+        self.speed_log.append({'episode': i_episode, 'velocity':self.sim.linear_accel})
