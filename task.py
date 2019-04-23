@@ -13,7 +13,7 @@ class Task():
         To set the size of the state (state_size), we must take action repeats into account.
     """
     def __init__(self, init_pose=None, init_velocities=None, 
-        init_angle_velocities=None, runtime=5., target_pos=None, reward_func=None):
+        init_angle_velocities=None, runtime=5., target_pos=None, reward_func=None, early_stop=False):
         """Initialize a Task object.
         Params
         ======
@@ -53,6 +53,7 @@ class Task():
         self.speed_log = []
         self.init_pose = init_pose if init_pose is not None else np.array([0., 0., 10., 0., 0., 0.])
         self.reward_func = reward_func if reward_func is not None else "target"
+        self.early_stop = early_stop
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
@@ -83,7 +84,7 @@ class Task():
             # Adding 0.1 to denominator to avoid division by zero
             distance_penalty = abs(self.sim.pose[:3] - self.target_pos[:3]).sum() / (abs(self.init_pose[:3] - self.target_pos[:3]).sum()  + 0.1)
 
-            velocity_penalty = min(self.sim.linear_accel[:2].sum(), 10) ** ()
+            velocity_penalty = min(self.sim.linear_accel[:2].sum(), 10)
 
             reward = 1. - distance_penalty - .6 * stable_penalty - .5 * velocity_penalty
         return reward
@@ -114,20 +115,28 @@ class Task():
         state = np.concatenate([self.sim.pose] * self.action_repeat) 
         return state
 
-    def early_stopping(self, i_episode):
+    def early_stopping(self, current_episode, threshold=None):
         """ 
             Check if the quadcopter has reached the target in the last few episode.
             If so, stop the trainning before it forgets how to succeed!
+            Params
+            ======
+                threshold: the distance away from the target that you prepare to accept for terminating the training
         """
-        if i_episode <= 11:
-            return False
+        if self.early_stop:
+            threshold = threshold or 0
+            if current_episode <= 11:
+                return False
 
-        for episode in range(i_episode-10, i_episode):
-            pass
+            for episode in range(current_episode-9, current_episode+1):
+                successes = 0
+                final_pose = [c['position'] for c in self.coords_log if c['episode']==episode][-1]
+                if abs(final_pose[:3] - self.target_pos[:3]).sum() <=  threshold:
+                    successes += 1
 
-        if sum(successes) >= 8:
-            return True
-        else:
+            return True if successes >= 7 else False
+
+        if not self.early_stop:     # if early_stop == False
             return False
 
     @property
