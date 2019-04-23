@@ -13,7 +13,7 @@ class Task():
         To set the size of the state (state_size), we must take action repeats into account.
     """
     def __init__(self, init_pose=None, init_velocities=None, 
-        init_angle_velocities=None, runtime=5., target_pos=None, orig_reward_func=False):
+        init_angle_velocities=None, runtime=5., target_pos=None, reward_func=None):
         """Initialize a Task object.
         Params
         ======
@@ -22,6 +22,12 @@ class Task():
             init_angle_velocities: initial radians/second for each of the three Euler angles
             runtime: time limit for each episode
             target_pos: target/goal (x,y,z) position for the agent
+            reward_func: apply different reward function depends on the task;
+                        * "original": use the most basic reward function
+                        * "takeoff": for task to teach the quadcopter to take off. Give a generous reward once its position(axis:z) is higher than the target
+                        * "hover": for task to keep the quadcopter in the air. Punish it hard for hitting the ground(z=0)
+                        * "land": for task to teach the quadcopter land. Reward very low speed when it is close to the ground(z=0)
+                        * "target": for task to send the quadcopter from one point to another in a 3D space
         """
         # Simulation
         self.sim = PhysicsSim(init_pose, init_velocities, init_angle_velocities, runtime) 
@@ -45,14 +51,21 @@ class Task():
 
         self.coords_log = []
         self.speed_log = []
-        self.init_pose = init_pose or np.array([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])
-        self.orig_reward_func = orig_reward_func
+        self.init_pose = init_pose if init_pose is not None else np.array([0., 0., 10., 0., 0., 0.])
+        self.reward_func = reward_func if reward_func is not None else "target"
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
-        if self.orig_reward_func:
+        if self.reward_func == "original":
             reward = 1.-.3*(abs(self.sim.pose[:3] - self.target_pos)).sum()
-        else:
+        elif self.reward_func == "takeoff":
+            pass #TODO
+        elif self.reward_func == "hover":
+            pass #TODO
+        elif self.reward_func == "land":
+            pass #TODO
+
+        elif self.reward_func == "target":
             ## Assign extra penalty if the quadcopter cannot keep stable in the air
             ## The more it diverses from the current height the more penalty it gets
             if len(self.coords_log) > 1:
@@ -63,13 +76,14 @@ class Task():
                 off_target_height_discount = np.exp(-abs(self.sim.pose[2] - self.target_pos[2]))
                 stable_penalty = stability ** off_target_height_discount
             else:
-                # because assume it start from infinitely far away from the target, off_target_height_discount will be close to ZERO
+                # Because assume it start from infinitely far away from the target, off_target_height_discount will be close to ZERO
                 stable_penalty = 1
 
             # Normalise the distance by dividing the current distance from the goal by the initial distance from the goal
-            distance_penalty = abs(self.sim.pose[:3] - self.target_pos[:3]).sum() / abs(self.init_pose[:3] - self.target_pos[:3]).sum()
+            # Adding 0.1 to denominator to avoid division by zero
+            distance_penalty = abs(self.sim.pose[:3] - self.target_pos[:3]).sum() / (abs(self.init_pose[:3] - self.target_pos[:3]).sum()  + 0.1)
 
-            velocity_penalty = min(self.sim.linear_accel[:2].sum(), 10) 
+            velocity_penalty = min(self.sim.linear_accel[:2].sum(), 10) ** ()
 
             reward = 1. - distance_penalty - .6 * stable_penalty - .5 * velocity_penalty
         return reward
@@ -99,6 +113,22 @@ class Task():
         self.sim.reset()
         state = np.concatenate([self.sim.pose] * self.action_repeat) 
         return state
+
+    def early_stopping(self, i_episode):
+        """ 
+            Check if the quadcopter has reached the target in the last few episode.
+            If so, stop the trainning before it forgets how to succeed!
+        """
+        if i_episode <= 11:
+            return False
+
+        for episode in range(i_episode-10, i_episode):
+            pass
+
+        if sum(successes) >= 8:
+            return True
+        else:
+            return False
 
     @property
     def current_coord(self):

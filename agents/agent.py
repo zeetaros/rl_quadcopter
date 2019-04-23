@@ -43,8 +43,8 @@ class AgentOculus():
         self.noise = OUNoise(self.action_size, self.exploration_mu, self.exploration_theta, self.exploration_sigma)
 
         # Algorithm parameters
-        self.gamma = 0.59  # discount factor, original 0.99
-        self.tau = 0.005  # for soft update of target parameters, original 0.01
+        self.gamma = 0.99  # discount factor, original 0.99
+        self.tau = 0.01  # for soft update of target parameters, original 0.01
  
         # Score tracker and learning parameters
         self.score = 0
